@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Simulador de Estacionamento</title>
+  <title>Alinhamento para Estacionar</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link 
     rel="stylesheet" 
@@ -15,74 +15,96 @@
     html, body, #map {
       height: 100%;
       margin: 0;
-      padding: 0;
     }
     #info {
       position: absolute;
       top: 10px;
       left: 10px;
-      z-index: 999;
-      background: white;
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.9);
       padding: 10px;
       border-radius: 8px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.3);
       font-size: 14px;
     }
   </style>
 </head>
 <body>
-
-<div id="map"></div>
-<div id="info">
-  <strong>Simulador de Estacionamento</strong><br>
-  A área verde simula o espaço do seu carro para ajudar no alinhamento.
-</div>
+  <div id="map"></div>
+  <div id="info">
+    <strong>Alinhamento do Carro</strong><br>
+    A linha azul mostra para onde seu carro está apontando.
+  </div>
 
 <script>
-  // Função principal
-  function initMap(lat, lng) {
-    const map = L.map('map').setView([lat, lng], 20);
+  let map, marker, directionLine;
+  let currentPosition = { lat: 0, lng: 0 };
 
-    // Mapa base do OpenStreetMap
+  // Inicializa o mapa
+  function initMap(lat, lng) {
+    map = L.map('map').setView([lat, lng], 19);
+
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 22,
       attribution: '&copy; OpenStreetMap'
     }).addTo(map);
 
-    // Marcador da localização
-    const marker = L.marker([lat, lng]).addTo(map)
+    marker = L.marker([lat, lng]).addTo(map)
       .bindPopup('Você está aqui').openPopup();
 
-    // Desenha uma "vaga" ao redor
-    const offsetLat = 0.000018; // ~2 metros
-    const offsetLng = 0.00004;  // ~4.5 metros
+    directionLine = L.polyline([
+      [lat, lng],
+      [lat + 0.0001, lng]
+    ], { color: 'blue', weight: 4 }).addTo(map);
+  }
 
-    const bounds = [
-      [lat - offsetLat, lng - offsetLng],
-      [lat + offsetLat, lng + offsetLng]
-    ];
+  // Atualiza a linha de direção com base na bússola
+  function updateDirection(angle) {
+    const deg = angle * (Math.PI / 180);
+    const offsetLat = Math.cos(deg) * 0.0001;
+    const offsetLng = Math.sin(deg) * 0.0001;
 
-    L.rectangle(bounds, {
-      color: "#00FF00",
-      weight: 2,
-      fillOpacity: 0.3
-    }).addTo(map);
+    const newLat = currentPosition.lat + offsetLat;
+    const newLng = currentPosition.lng + offsetLng;
+
+    directionLine.setLatLngs([
+      [currentPosition.lat, currentPosition.lng],
+      [newLat, newLng]
+    ]);
   }
 
   // Geolocalização
   if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      function (position) {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        initMap(lat, lng);
-      },
-      function (error) {
-        alert("Erro ao obter localização: " + error.message);
-      }
-    );
+    navigator.geolocation.getCurrentPosition(function (position) {
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+      currentPosition = { lat, lng };
+      initMap(lat, lng);
+    }, function (err) {
+      alert("Erro ao obter localização: " + err.message);
+    });
   } else {
     alert("Seu navegador não suporta geolocalização.");
+  }
+
+  // Leitura da bússola (rotação do dispositivo)
+  if (window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function') {
+    // iOS - precisa de permissão
+    DeviceOrientationEvent.requestPermission().then(permissionState => {
+      if (permissionState === 'granted') {
+        window.addEventListener('deviceorientation', function (event) {
+          if (event.alpha !== null) {
+            updateDirection(event.alpha);
+          }
+        });
+      }
+    }).catch(console.error);
+  } else {
+    // Android - funciona direto
+    window.addEventListener('deviceorientationabsolute', function (event) {
+      if (event.alpha !== null) {
+        updateDirection(event.alpha);
+      }
+    });
   }
 </script>
 
