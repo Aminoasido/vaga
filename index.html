@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Assistente de Estacionamento</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    html, body, #map {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    #info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 999;
+      background: white;
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+    }
+  </style>
+  <script src="https://maps.googleapis.com/maps/api/js?key=SUA_CHAVE_AQUI"></script>
+  <script>
+    function initMap() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function (position) {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+
+          const userLocation = { lat: lat, lng: lng };
+
+          const map = new google.maps.Map(document.getElementById("map"), {
+            zoom: 20,
+            center: userLocation,
+            mapTypeId: 'satellite'
+          });
+
+          // Marca o local atual
+          new google.maps.Marker({
+            position: userLocation,
+            map: map,
+            title: "Você está aqui",
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 8,
+              fillColor: "#00F",
+              fillOpacity: 1,
+              strokeWeight: 2,
+              strokeColor: "#FFF"
+            }
+          });
+
+          // Vaga simulada (aprox. 2m x 4.5m em coordenadas)
+          const deltaLat = 0.000018; // ~2m
+          const deltaLng = 0.00004;  // ~4.5m
+
+          const vagaBounds = {
+            north: lat + deltaLat,
+            south: lat - deltaLat,
+            east: lng + deltaLng,
+            west: lng - deltaLng
+          };
+
+          new google.maps.Rectangle({
+            strokeColor: "#00FF00",
+            strokeOpacity: 0.9,
+            strokeWeight: 2,
+            fillColor: "#00FF00",
+            fillOpacity: 0.3,
+            map: map,
+            bounds: vagaBounds
+          });
+
+        }, function (error) {
+          alert("Erro ao obter localização: " + error.message);
+        });
+      } else {
+        alert("Geolocalização não suportada no seu navegador.");
+      }
+    }
+  </script>
+</head>
+<body onload="initMap()">
+  <div id="map"></div>
+  <div id="info">
+    <strong>Simulador de Estacionamento</strong><br>
+    A vaga verde representa o tamanho médio do seu carro.<br>
+    Use para alinhar melhor seu estacionamento.
+  </div>
+</body>
+</html>
